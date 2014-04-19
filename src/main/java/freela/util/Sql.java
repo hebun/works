@@ -14,9 +14,12 @@ public abstract class Sql {
 	protected String tableName;
 	protected boolean isBuilt = false;
 	protected String currentSql = "";
+	protected String orderColumn = null;
+	protected String orderWay = "asc";
+	protected int start = 0, count = 0;
 	protected Map<String, Map.Entry<String, String>> where = new Hashtable<String, Map.Entry<String, String>>();
 
-	public Sql whereEntry(String type, final String key, final String value) {
+	public Sql whereEntry(String type, final String key, final Object value) {
 		where.put(type, new Map.Entry<String, String>() {
 
 			@Override
@@ -26,7 +29,7 @@ public abstract class Sql {
 
 			@Override
 			public String getValue() {
-				return value;
+				return value.toString();
 			}
 
 			@Override
@@ -38,7 +41,7 @@ public abstract class Sql {
 		return this;
 	}
 
-	public Sql where(final String key, final String value) {
+	public Sql where(final String key, final Object value) {
 
 		return whereEntry("where", key, value);
 	}
@@ -52,10 +55,122 @@ public abstract class Sql {
 	public Sql or(final String key, final String value) {
 		if (where.size() == 0)
 			throw new RuntimeException("cant use or before where");
+
 		return whereEntry("or", key, value);
 	}
 
+	public Sql order(String order) {
+		if (!(this instanceof Select)) {
+			throw new RuntimeException("order can not be used with "
+					+ this.getClass().getSimpleName());
+		}
+		this.orderColumn = order;
+		return this;
+	}
+
+	public Sql desc() {
+		this.orderWay = "desc";
+		return this;
+	}
+
+	public Sql limit(int start, int count) {
+		this.start = start;
+		this.count = count;
+		return this;
+	}
+
+	public Sql limit(int count) {
+
+		return this.limit(0, count);
+	}
+
+	public String getFollowings() {
+		String ret = "";
+
+		if (orderColumn != null) {
+			ret += " order by " + orderColumn + " " + orderWay;
+		}
+		if (count != 0) {
+			ret += " limit " + start + "," + count;
+		}
+		return ret;
+	}
+
 	public abstract String get();
+
+	public static class Delete extends Sql {
+
+		public Delete(String table) {
+			this.tableName = table;
+
+		}
+
+		@Override
+		public String get() {
+			if (isBuilt)
+				return currentSql;
+			if (where.size() == 0)
+				throw new RuntimeException("cant use delete without where");
+			StringBuilder builder = new StringBuilder("delete from  `");
+			builder.append(this.tableName);
+			builder.append("`");
+			for (Map.Entry<String, Map.Entry<String, String>> en : where
+					.entrySet()) {
+				builder.append(' ').append(en.getKey()).append(' ')
+						.append(en.getValue().getKey()).append("'")
+						.append(en.getValue().getValue()).append("' ");
+			}
+
+			this.currentSql = builder.toString();
+			this.isBuilt = true;
+			this.currentSql += super.getFollowings();
+			return currentSql;
+		}
+
+	}
+
+	public static class Update extends Sql {
+		Map<String, Object> fields = new Hashtable<String, Object>();
+
+		public Update(String table) {
+			this.tableName = table;
+
+		}
+
+		@Override
+		public String get() {
+			if (isBuilt)
+				return currentSql;
+			if (where.size() == 0)
+				throw new RuntimeException("cant use update without where");
+			StringBuilder builder = new StringBuilder("update `");
+			builder.append(this.tableName);
+			builder.append("` set ");
+			for (Map.Entry<String, Object> en : fields.entrySet()) {
+				builder.append(en.getKey()).append("='")
+						.append(en.getValue().toString()).append("',");
+			}
+			builder.deleteCharAt(builder.length() - 1);
+			for (Map.Entry<String, Map.Entry<String, String>> en : where
+					.entrySet()) {
+				builder.append(' ').append(en.getKey()).append(' ')
+						.append(en.getValue().getKey()).append("'")
+						.append(en.getValue().getValue()).append("' ");
+			}
+
+			this.currentSql = builder.toString();
+			this.currentSql += super.getFollowings();
+			this.isBuilt = true;
+			return currentSql;
+		}
+
+		public Update add(String key, Object value) {
+
+			this.fields.put(key, value);
+			return this;
+
+		}
+	}
 
 	public static class Insert extends Sql {
 		Map<String, Object> fields = new Hashtable<String, Object>();
@@ -86,14 +201,14 @@ public abstract class Sql {
 			builder.deleteCharAt(builder.length() - 1);
 			builder.append(") values (");
 			for (Map.Entry<String, Object> en : fields.entrySet()) {
-							
-				builder.append("'");
-				builder.append(en.getValue().toString());
-				builder.append("',");
+
+				builder.append("'").append(en.getValue().toString())
+						.append("',");
 			}
 			builder.deleteCharAt(builder.length() - 1);
 			builder.append(")");
 			this.currentSql = builder.toString();
+			this.currentSql += super.getFollowings();
 			this.isBuilt = true;
 			return currentSql;
 		}
@@ -103,12 +218,19 @@ public abstract class Sql {
 	public static class Select extends Sql {
 
 		public Select(String params) {
-			fieldList = params;
-			operation = Operation.SELECT;
+			setFields(params);
 
 		}
 
+		public Select setFields(String params) {
+			this.isBuilt=false;
+			fieldList = params;
+			operation = Operation.SELECT;
+			return this;
+		}
+
 		public Select from(String table) {
+			this.isBuilt=false;
 			tableName = table;
 			return this;
 		}
@@ -118,22 +240,17 @@ public abstract class Sql {
 			if (isBuilt)
 				return currentSql;
 			StringBuilder builder = new StringBuilder("select ");
-			builder.append(fieldList);
-			builder.append(" from `");
-			builder.append(this.tableName);
-			builder.append("` ");
+			builder.append(fieldList).append(" from `").append(this.tableName)
+					.append("` ");
 
 			for (Map.Entry<String, Map.Entry<String, String>> en : where
 					.entrySet()) {
-				builder.append(' ');
-				builder.append(en.getKey());
-				builder.append(' ');
-				builder.append(en.getValue().getKey());
-				builder.append("'");
-				builder.append(en.getValue().getValue());
-				builder.append("' ");
+				builder.append(' ').append(en.getKey()).append(' ')
+						.append(en.getValue().getKey()).append("'")
+						.append(en.getValue().getValue()).append("' ");
 			}
 			this.currentSql = builder.toString();
+			this.currentSql += super.getFollowings();
 			this.isBuilt = true;
 			return currentSql;
 		}

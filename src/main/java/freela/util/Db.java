@@ -7,14 +7,17 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Hashtable;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 public class Db {
 
 	static final String JDBC_DRIVER = "com.mysql.jdbc.Driver";
-	static final String DB_URL = "jdbc:mysql://localhost/fazlastoklar";
+	static final String DB_URL = "jdbc:mysql://localhost/betting";
 
 	// Database credentials
 	static final String USER = "root";
@@ -23,6 +26,7 @@ public class Db {
 	static Connection conn = null;
 	static Statement stmt = null;
 	static int say = 0;
+
 
 	public static void start(String caller) {
 		try {
@@ -71,6 +75,46 @@ public class Db {
 
 	}
 
+	public static void select(String sql, SelectCallbackTable callback) {
+		start("");
+		String[] columns = null;
+		List<List<String>> data = null;
+		try {
+
+			ResultSet rs = stmt.executeQuery(sql);
+			ResultSetMetaData metaData = rs.getMetaData();
+			int colCount = metaData.getColumnCount();
+
+			columns = new String[colCount];
+
+			for (int i = 0; i < colCount; i++) {
+				columns[i] = new String(metaData.getColumnLabel(i + 1));
+			}
+
+			data = new ArrayList<List<String>>();
+			while (rs.next()) {
+				List<String> row = new ArrayList<String>();
+				for (String col : columns) {
+					String string = rs.getString(col);
+					if (string == null)
+						string = "null";
+					row.add(string);
+				}
+				data.add(row);
+			}
+
+		} catch (SQLException se) {
+			System.out.println("se in select" + sql);
+			se.printStackTrace();
+		} catch (Exception e) {
+			System.out.println("e in select" + sql);
+			e.printStackTrace();
+		} finally {
+			close("");
+		}
+		callback.callback(columns, data);
+	}
+
 	public static void select(String sql, SelectCallbackLoop callback) {
 		start("");
 
@@ -88,11 +132,12 @@ public class Db {
 
 			while (rs.next()) {
 
-				Map<String, String> map = new Hashtable<String, String>();
+				Map<String, String> map = new LinkedHashMap<String, String>();
 
 				for (String col : columns) {
 					String string = rs.getString(col);
-					if(string==null) string="null";
+					if (string == null)
+						string = "null";
 					map.put(col, string);
 
 				}
@@ -104,7 +149,7 @@ public class Db {
 			System.out.println("se in select" + sql);
 			se.printStackTrace();
 		} catch (Exception e) {
-			System.out.println("e in select"+sql);
+			System.out.println("e in select" + sql);
 			e.printStackTrace();
 		} finally {
 			close("");
@@ -209,4 +254,30 @@ public class Db {
 		public void callback(Map<String, String> map);
 	}
 
+	public static interface SelectCallbackTable {
+
+		public void callback(String[] columns, List<List<String>> data);
+	}
+
+	public static class Datatable {
+		String[] columns;
+		List<List<String>> data;
+
+	}
+
+	public static enum category {
+		id, cname,
+	}
+
+	public static enum product {
+		id, pname, content, pstate, quantity, price, expiredate, keywords, file,
+	}
+
+	public static enum productcategory {
+		id, productId, categoryId,
+	}
+
+	public static enum productphoto {
+		id, productId, file,
+	}
 }
