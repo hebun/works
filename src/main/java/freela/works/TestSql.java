@@ -1,11 +1,18 @@
-package freela.util;
+package freela.works;
 
-import java.util.ArrayList;
-import java.util.List;
+import static org.junit.Assert.assertEquals;
+
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.junit.Test;
+
+import freela.util.ASCIITable;
+import freela.util.Db;
+import freela.util.Sql;
+import freela.util.Db.SelectCallbackLoop;
+import freela.util.Sql.Select;
 
 public class TestSql {
 
@@ -13,35 +20,65 @@ public class TestSql {
 		public void callback();
 	}
 
+	public void anotherTest() {
+
+		String[][] data = new String[10][];
+
+		Db.select(new Sql.Select("*").from("product").limit(10).get(),
+				new Db.SelectCallbackLoop() {
+					int ind = 0;
+
+					@Override
+					public void callback(Map<String, String> map) {
+						data[ind++] = map.values().toArray(
+								new String[map.values().size()]);
+
+					}
+				});
+
+		new ASCIITable().printTable(data);
+
+		String input = "345";
+
+		for (char i1 : input.toCharArray()) {
+			System.out.print(i1 == '5' ? i1 : '0');
+
+		}
+
+		// System.out.println("5 digits here:" + x + y + z);
+	}
+
+	// Use an enum constructor, instance variable, and method.
+	enum Apple {
+		Jonathan(10), GoldenDel(9), RedDel(12), Winesap(15), Cortland(8);
+		private int price; // price of each apple
+
+		// Constructor
+		Apple(int p) {
+			System.out.println("enum cons"+p);
+			price = p;
+		}
+
+		int getPrice() {
+			return price;
+		}
+	}
+
 	@Test
 	public void test() {
 
-		func((o) -> {
+		Apple ap;
+		Class<? extends TestSql> class1=this.getClass();
+		
+		
+	}
 
-			return o.toString();
-		});
-		List<String> list=new ArrayList<>();
-		// String sql = "select count(*) from catasto where series = 1 ";
-		// String mysql = new Sql.Select("count(*)").from("catasto")
-		// .where("series=", 1).get();
-		// assertEquals(similarity(sql, mysql), 1.0, 0.3);
-		// assertEquals(sql, mysql);
-		doSomethingAndRunThisCode(new Consumer<String>() {
+	// @Test
+	public void testSql() {
+		String sql = "select * from `product` ";
 
-			@Override
-			public void accept(String t) {
-				// TODO Auto-generated method stub
-
-			}
-		});
-
-		doSomethingAndRunThisCode((s) -> {
-			System.out.println(s);
-		}
-
-		);
-		// doSomethingAndRunThisCode();
-
+		String sql1 = new Sql.Select().from("product").get();
+		assertEquals(sql, sql1);
 	}
 
 	private void doSomethingAndRunThisCode(Consumer<String> consumer) {

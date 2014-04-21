@@ -4,13 +4,8 @@ import java.util.Hashtable;
 import java.util.Map;
 
 public abstract class Sql {
-
-	public enum Operation {
-		SELECT, UPDATE, INSERT, DELETE
-	}
-
 	protected String fieldList;
-	protected Operation operation;
+
 	protected String tableName;
 	protected boolean isBuilt = false;
 	protected String currentSql = "";
@@ -48,24 +43,15 @@ public abstract class Sql {
 
 	public Sql and(final String key, final String value) {
 		if (where.size() == 0)
-			throw new RuntimeException("cant use and before where");
+			throw new SqlBuilderExeption("cant use and before where");
 		return whereEntry("and", key, value);
 	}
 
 	public Sql or(final String key, final String value) {
 		if (where.size() == 0)
-			throw new RuntimeException("cant use or before where");
+			throw new SqlBuilderExeption("cant use or before where");
 
 		return whereEntry("or", key, value);
-	}
-
-	public Sql order(String order) {
-		if (!(this instanceof Select)) {
-			throw new RuntimeException("order can not be used with "
-					+ this.getClass().getSimpleName());
-		}
-		this.orderColumn = order;
-		return this;
 	}
 
 	public Sql desc() {
@@ -222,15 +208,20 @@ public abstract class Sql {
 
 		}
 
+		public Select() {
+			this("*");
+
+		}
+
 		public Select setFields(String params) {
-			this.isBuilt=false;
+			this.isBuilt = false;
 			fieldList = params;
-			operation = Operation.SELECT;
+
 			return this;
 		}
 
 		public Select from(String table) {
-			this.isBuilt=false;
+			this.isBuilt = false;
 			tableName = table;
 			return this;
 		}
@@ -254,5 +245,20 @@ public abstract class Sql {
 			this.isBuilt = true;
 			return currentSql;
 		}
+
+		public Select order(String order) {
+
+			this.orderColumn = order;
+			return this;
+		}
+	}
+
+	@SuppressWarnings("serial")
+	public class SqlBuilderExeption extends RuntimeException {
+
+		public SqlBuilderExeption(String string) {
+			super(string);
+		}
+
 	}
 }

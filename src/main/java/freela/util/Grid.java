@@ -2,7 +2,6 @@ package freela.util;
 
 
 import java.awt.Dimension;
-import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
 
