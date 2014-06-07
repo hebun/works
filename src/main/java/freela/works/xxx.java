@@ -1,9 +1,12 @@
 package freela.works;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.io.ObjectInputStream.GetField;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Method;
@@ -12,11 +15,19 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
+import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import javax.inject.Inject;
+
+import freela.utilx.Sql;
+import freela.utilx.Sql.Select;
 
 public class xxx implements Runnable {
 	private static final char ESC_CODE = 'x';;
@@ -24,6 +35,15 @@ public class xxx implements Runnable {
 	Thread thread;
 	int speed = 0;
 	int no;
+	long cc = 0;
+
+	@Inject
+	Say say;
+
+	public String get() {
+		cc++;
+		return name;
+	}
 
 	public xxx(String name, int no) {
 		this.no = no;
@@ -43,11 +63,135 @@ public class xxx implements Runnable {
 	}
 
 	public static void main(String[] args) {
+
+		xxx x = new xxx("name", 0);
+		
+		x.getSay().say();		
+
+		// sqljoinWork();
+
+		// somestuf();
+
+		//
+		// Gen gen = new Gen();
+		//
+		// for (int i : gen) {
+		// System.out.println(i);
+		// }
+
+		// processWork();
+
+		// memoryWork();
+
+		// Gen<Integer> g=new Gen<>(3);
+
 		// listRecursive(new File("."));
 
 		// fileReadWriteWork();
 		// annotationWork();
 		// threadWork();
+	}
+
+	public Say getSay() {
+		return say;
+	}
+
+	public void setSay(Say say) {
+		this.say = say;
+	}
+
+	private static void sqljoinWork() {
+		Sql sel = new Select().from("talep").as("t").rightJoin("product")
+				.as("p").on("t.productid", "p.id").innerJoin("user").as("u")
+				.on("u.id", "p.userid").where("t.id<", 10);
+
+		System.out.println(sel.get());
+	}
+
+	private static void somestuf() {
+		TreeSet<Integer> treeSet = new TreeSet<>((o1, o2) -> {
+			return o1 < o2 ? 1 : o1 == o2 ? 0 : -1;
+		}
+
+		);
+		List<String> coreModules = Arrays.asList("TOOLBAR_TO_DO_LIST",
+				"TOOLBAR_PROPERTY", "TOOLBAR_PEOPLE", "TOOLBAR_INSURANCE",
+				"TOOLBAR_BATCH", "TOOLBAR_INFORMATION_REFERENCE",
+				"TOOLBAR_LR_PROPERTY", "TOOLBAR_CASE_FOLDER",
+				"TOOLBAR_INSPECTION_RESULT", "TOOLBAR_MY_OFFICE");
+		coreModules.add("blblba");
+		Random random = new Random();
+		for (int i = 0; i < 10; i++) {
+			treeSet.add(random.nextInt(100));
+		}
+		treeSet.stream().forEach(System.out::println);
+
+		Integer[] arr = { 3, 23, 4, 22, 45, 333, 22, 3 };
+
+		List<Integer> li = new ArrayList<Integer>(Arrays.asList(arr));
+	}
+
+	private static void processWork() {
+		System.out.println(System.getenv("SESSION"));
+
+		long start, end;
+		start = System.currentTimeMillis(); // get starting time
+		for (int i = 0; i < 10000000; i++) {
+			int x = 0;
+			int y = x + 2;
+		}
+
+		end = System.currentTimeMillis(); // get ending time
+		System.out.println("Elapsed time: " + (end - start));
+
+		Runtime r = Runtime.getRuntime();
+
+		Process p = null;
+
+		try {
+			p = r.exec("ls");
+			System.out.println("execed");
+
+			BufferedReader br = new BufferedReader(new InputStreamReader(
+					p.getErrorStream()));
+			String line = null;
+			System.out.println("<OUTPUT>");
+			while ((line = br.readLine()) != null)
+				System.out.println(line);
+			System.out.println("</OUTPUT>");
+			p.waitFor();
+			System.out.println("finished");
+		} catch (Exception e) {
+
+		}
+	}
+
+	private static void memoryWork() {
+		Runtime r = Runtime.getRuntime();
+		long mem1, mem2;
+
+		System.out.println("Total memory is: " + r.totalMemory());
+		mem1 = r.freeMemory();
+		System.out.println("Initial free memory: " + mem1);
+		r.gc();
+		mem1 = r.freeMemory();
+		System.out.println("Free memory after garbage collection: " + mem1);
+
+		List<xxx> someints = new ArrayList<>();
+
+		for (int i = 0; i < 100000; i++)
+			someints.add(new xxx("xx", i)); // allocate integers
+
+		mem2 = r.freeMemory();
+		System.out.println("Free memory after allocation: " + mem2);
+		System.out.println("Memory used by allocation: " + (mem1 - mem2) / 1000
+				+ " KB");
+		// discard Integers
+
+		r.gc(); // request garbage collection
+		mem2 = r.freeMemory();
+		System.out.println("Free memory after collecting"
+				+ " discarded Integers: " + mem2);
 	}
 
 	public native void fromC();

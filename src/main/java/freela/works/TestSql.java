@@ -8,11 +8,11 @@ import java.util.function.Function;
 
 import org.junit.Test;
 
-import freela.util.ASCIITable;
-import freela.util.Db;
-import freela.util.Sql;
-import freela.util.Db.SelectCallbackLoop;
-import freela.util.Sql.Select;
+import freela.utilx.ASCIITable;
+import freela.utilx.Db;
+import freela.utilx.Sql;
+import freela.utilx.Db.SelectCallbackLoop;
+import freela.utilx.Sql.Select;
 
 public class TestSql {
 

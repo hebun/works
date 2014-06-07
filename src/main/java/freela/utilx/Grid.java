@@ -1,4 +1,4 @@
-package freela.util;
+package freela.utilx;
 
 
 import java.awt.Dimension;

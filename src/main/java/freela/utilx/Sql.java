@@ -1,12 +1,9 @@
-package freela.util;
+package freela.utilx;
 
-import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.Hashtable;
-import java.util.List;
 import java.util.Map;
 
-public abstract class Sql<T extends Sql<T>> {
+public abstract class Sql {
 	protected String fieldList;
 
 	protected String tableName;
@@ -16,27 +13,13 @@ public abstract class Sql<T extends Sql<T>> {
 	protected String orderWay = "asc";
 	protected int start = 0, count = 0;
 	protected Map<String, Map.Entry<String, String>> where = new Hashtable<String, Map.Entry<String, String>>();
-	protected boolean isPrepared = false;
 
-	public abstract Sql<T> prepare();
-
-	@SuppressWarnings("unchecked")
-	private final T thisAsT = (T) this;
-
-	public T whereEntry(String type, String key, final Object value) {
-
-		char charAt = key.charAt(key.length() - 1);
-		if (charAt != ' ' && charAt != '<' && charAt != '>' && charAt != '=') {
-			key = key + "=";
-		}
-		final String fkey = key;
-		if (where.containsKey(type))
-			type = type + " ";
+	public Sql whereEntry(String type, final String key, final Object value) {
 		where.put(type, new Map.Entry<String, String>() {
 
 			@Override
 			public String getKey() {
-				return fkey;
+				return key;
 			}
 
 			@Override
@@ -50,40 +33,39 @@ public abstract class Sql<T extends Sql<T>> {
 				return null;
 			}
 		});
-
-		return thisAsT;
+		return this;
 	}
 
-	public T where(final String key, final Object value) {
+	public Sql where(final String key, final Object value) {
 
 		return whereEntry("where", key, value);
 	}
 
-	public T and(final String key, final String value) {
+	public Sql and(final String key, final String value) {
 		if (where.size() == 0)
-			throw new RuntimeException("cant use 'and' before 'where'");
+			throw new SqlBuilderExeption("cant use and before where");
 		return whereEntry("and", key, value);
 	}
 
-	public T or(final String key, final String value) {
+	public Sql or(final String key, final String value) {
 		if (where.size() == 0)
-			throw new RuntimeException("cant use 'or' before 'where'");
+			throw new SqlBuilderExeption("cant use or before where");
 
 		return whereEntry("or", key, value);
 	}
 
-	public T desc() {
+	public Sql desc() {
 		this.orderWay = "desc";
-		return thisAsT;
+		return this;
 	}
 
-	public T limit(int start, int count) {
+	public Sql limit(int start, int count) {
 		this.start = start;
 		this.count = count;
-		return thisAsT;
+		return this;
 	}
 
-	public T limit(int count) {
+	public Sql limit(int count) {
 
 		return this.limit(0, count);
 	}
@@ -102,7 +84,7 @@ public abstract class Sql<T extends Sql<T>> {
 
 	public abstract String get();
 
-	public static class Delete extends Sql<Delete> {
+	public static class Delete extends Sql {
 
 		public Delete(String table) {
 			this.tableName = table;
@@ -115,19 +97,14 @@ public abstract class Sql<T extends Sql<T>> {
 				return currentSql;
 			if (where.size() == 0)
 				throw new RuntimeException("cant use delete without where");
-			StringBuilder builder = new StringBuilder("delete from  ");
+			StringBuilder builder = new StringBuilder("delete from  `");
 			builder.append(this.tableName);
-			builder.append("");
+			builder.append("`");
 			for (Map.Entry<String, Map.Entry<String, String>> en : where
 					.entrySet()) {
 				builder.append(' ').append(en.getKey()).append(' ')
-						.append(en.getValue().getKey());
-				if (isPrepared) {
-					throw new RuntimeException("no prepere for delete");
-				} else {
-					builder.append("'").append(en.getValue().getValue())
-							.append("' ");
-				}
+						.append(en.getValue().getKey()).append("'")
+						.append(en.getValue().getValue()).append("' ");
 			}
 
 			this.currentSql = builder.toString();
@@ -136,47 +113,13 @@ public abstract class Sql<T extends Sql<T>> {
 			return currentSql;
 		}
 
-		@Override
-		public Delete prepare() {
-			throw new RuntimeException("no prepare for delete");
-		}
-
-		public int run() {
-
-			return Db.delete(this.get());
-
-		}
-
-		public Delete and(final String key, final Object value) {
-			return (Delete) super.and(key, value.toString());
-		}
-
-		public Delete or(final String key, final Object value) {
-			return (Delete) super.or(key, value.toString());
-		}
 	}
 
-	public static class Update extends Sql<Update> {
+	public static class Update extends Sql {
 		Map<String, Object> fields = new Hashtable<String, Object>();
 
 		public Update(String table) {
 			this.tableName = table;
-
-		}
-
-		public List<String> params() {
-			List<String> ret = new ArrayList<>();
-			for (Object string : fields.values()) {
-				ret.add(string.toString());
-			}
-
-			for (Map.Entry<String, Map.Entry<String, String>> en : where
-					.entrySet()) {
-
-				ret.add(en.getValue().getValue());
-			}
-
-			return ret;
 
 		}
 
@@ -185,38 +128,26 @@ public abstract class Sql<T extends Sql<T>> {
 			if (isBuilt)
 				return currentSql;
 			if (where.size() == 0)
-				throw new RuntimeException("cant use update without where");
+				throw new SqlBuilderExeption("cant use update without where");
 
 			if (fields.size() <= 0) {
-				throw new RuntimeException(
+				throw new SqlBuilderExeption(
 						"Sql.Update:there is no column to set  ");
 			}
 
-			StringBuilder builder = new StringBuilder("update ");
+			StringBuilder builder = new StringBuilder("update `");
 			builder.append(this.tableName);
-			builder.append(" set ");
+			builder.append("` set ");
 			for (Map.Entry<String, Object> en : fields.entrySet()) {
-				builder.append(en.getKey()).append("=");
-
-				if (isPrepared) {
-					builder.append("?,");
-				} else {
-
-					builder.append("'").append(en.getValue().toString())
-							.append("',");
-				}
+				builder.append(en.getKey()).append("='")
+						.append(en.getValue().toString()).append("',");
 			}
 			builder.deleteCharAt(builder.length() - 1);
 			for (Map.Entry<String, Map.Entry<String, String>> en : where
 					.entrySet()) {
 				builder.append(' ').append(en.getKey()).append(' ')
-						.append(en.getValue().getKey());
-				if (isPrepared) {
-					builder.append("? ");
-				} else {
-					builder.append("'").append(en.getValue().getValue())
-							.append("' ");
-				}
+						.append(en.getValue().getKey()).append("'")
+						.append(en.getValue().getValue()).append("' ");
 			}
 
 			this.currentSql = builder.toString();
@@ -231,37 +162,13 @@ public abstract class Sql<T extends Sql<T>> {
 			return this;
 
 		}
-
-		@Override
-		public Update prepare() {
-			this.isPrepared = true;
-			return this;
-		}
-
-		public int run() {
-			if (isPrepared) {
-				return Db.prepareInsert(this.get(), this.params());
-			} else {
-				return Db.update(this.get());
-			}
-		}
-
 	}
 
-	public static class Insert extends Sql<Insert> {
+	public static class Insert extends Sql {
 		Map<String, Object> fields = new Hashtable<String, Object>();
 
 		public Insert(String table) {
 			this.tableName = table;
-
-		}
-
-		public List<String> params() {
-			List<String> ret = new ArrayList<>();
-			for (Object string : fields.values()) {
-				ret.add(string.toString());
-			}
-			return ret;
 
 		}
 
@@ -276,9 +183,9 @@ public abstract class Sql<T extends Sql<T>> {
 		public String get() {
 			if (isBuilt)
 				return currentSql;
-			StringBuilder builder = new StringBuilder("insert into ");
+			StringBuilder builder = new StringBuilder("insert into `");
 			builder.append(this.tableName);
-			builder.append("(");
+			builder.append("`(");
 			for (Map.Entry<String, Object> en : fields.entrySet()) {
 				builder.append(en.getKey());
 				builder.append(",");
@@ -287,13 +194,8 @@ public abstract class Sql<T extends Sql<T>> {
 			builder.append(") values (");
 			for (Map.Entry<String, Object> en : fields.entrySet()) {
 
-				if (isPrepared) {
-					builder.append("?,");
-
-				} else {
-					builder.append("'").append(en.getValue().toString())
-							.append("',");
-				}
+				builder.append("'").append(en.getValue().toString())
+						.append("',");
 			}
 			builder.deleteCharAt(builder.length() - 1);
 			builder.append(")");
@@ -303,23 +205,9 @@ public abstract class Sql<T extends Sql<T>> {
 			return currentSql;
 		}
 
-		@Override
-		public Insert prepare() {
-			this.isPrepared = true;
-			return this;
-		}
-
-		public int run() {
-			if (isPrepared) {
-				return Db.prepareInsert(this.get(), this.params());
-			} else {
-				return Db.insert(this.get());
-			}
-		}
-
 	}
 
-	public static class Select extends Sql<Select> {
+	public static class Select extends Sql {
 
 		String secondTable, thirdTable;
 		String secondAlias, firstAlias, thirdAlias;
@@ -328,32 +216,22 @@ public abstract class Sql<T extends Sql<T>> {
 		String lastTable;
 		String onKey, onValue, onKey2, onValue2;
 		String joinType, secondJoinType;
-		String groupBy;
 
 		public Select(String params) {
 			setFields(params);
 
 		}
 
-		public Select groupBy(String f) {
-			this.groupBy = f;
-			return this;
-		}
-
 		public Select join(String table) {
-			return joinWithType(table, "join");
-		}
-
-		private Select joinWithType(String table, String type) {
 			if (isJoin) {
 				isSecondJoin = true;
 				thirdTable = table;
-				secondJoinType = type;
+				secondJoinType = "join";
 			} else {
 
 				isJoin = true;
 				secondTable = table;
-				joinType = type;
+				joinType = "join";
 
 			}
 
@@ -361,15 +239,49 @@ public abstract class Sql<T extends Sql<T>> {
 		}
 
 		public Select innerJoin(String table) {
-			return joinWithType(table, "inner join");
+
+			if (isJoin) {
+				isSecondJoin = true;
+				thirdTable = table;
+				secondJoinType = "inner join";
+			} else {
+
+				isJoin = true;
+				secondTable = table;
+				joinType = "inner join";
+			}
+
+			return this;
 		}
 
 		public Select rightJoin(String table) {
-			return joinWithType(table, "right join");
+			if (isJoin) {
+				isSecondJoin = true;
+				thirdTable = table;
+				secondJoinType = "right join";
+			} else {
+
+				isJoin = true;
+				secondTable = table;
+				joinType = "right join";
+			}
+
+			return this;
 		}
 
 		public Select leftJoin(String table) {
-			return joinWithType(table, "left join");
+			if (isJoin) {
+				isSecondJoin = true;
+				thirdTable = table;
+				secondJoinType = "left join";
+			} else {
+
+				isJoin = true;
+				secondTable = table;
+				joinType = "left join";
+			}
+
+			return this;
 		}
 
 		public Select on(String key, String value) {
@@ -379,6 +291,23 @@ public abstract class Sql<T extends Sql<T>> {
 			} else {
 				onKey = key;
 				onValue = value;
+			}
+			return this;
+		}
+
+		public Select as(String alias) {
+
+			if (secondTable == null) {
+				if (tableName == null) {
+					throw new SqlBuilderExeption("table name is null");
+				}
+				firstAlias = alias;
+			} else {
+				if (thirdTable == null) {
+					secondAlias = alias;
+				} else {
+					thirdAlias = alias;
+				}
 			}
 			return this;
 		}
@@ -402,27 +331,16 @@ public abstract class Sql<T extends Sql<T>> {
 			return this;
 		}
 
-		public List<String> params() {
-			if (!isPrepared) {
-				throw new RuntimeException("you didn't call prepare");
-			}
-			List<String> ret = new ArrayList<>();
-			for (Map.Entry<String, String> entry : where.values()) {
-				ret.add(entry.getValue());
-			}
-			return ret;
-
-		}
-
 		@Override
 		public String get() {
-
+			if (isBuilt)
+				return currentSql;
 			StringBuilder builder = new StringBuilder("select ");
 			builder.append(fieldList);
 
 			if (tableName != null && tableName != "") {
 
-				builder.append(" from ").append(this.tableName).append(" ");
+				builder.append(" from `").append(this.tableName).append("` ");
 
 				if (firstAlias != null) {
 					builder.append("as ").append(firstAlias);
@@ -433,7 +351,8 @@ public abstract class Sql<T extends Sql<T>> {
 						builder.append(" as ").append(secondAlias);
 					}
 					if (onKey == null || onValue == null) {
-						throw new RuntimeException("cant use join without on ");
+						throw new SqlBuilderExeption(
+								"cant use join without on ");
 					}
 					builder.append(" on ").append(onKey).append("=")
 							.append(onValue);
@@ -445,7 +364,8 @@ public abstract class Sql<T extends Sql<T>> {
 						builder.append(" as ").append(thirdAlias);
 					}
 					if (onKey2 == null || onValue2 == null) {
-						throw new RuntimeException("cant use join without on ");
+						throw new SqlBuilderExeption(
+								"cant use join without on ");
 					}
 					builder.append(" on ").append(onKey2).append("=")
 							.append(onValue2);
@@ -453,17 +373,8 @@ public abstract class Sql<T extends Sql<T>> {
 				for (Map.Entry<String, Map.Entry<String, String>> en : where
 						.entrySet()) {
 					builder.append(' ').append(en.getKey()).append(' ')
-							.append(en.getValue().getKey());
-					if (isPrepared) {
-						builder.append("? ");
-					} else {
-						builder.append("'").append(en.getValue().getValue())
-								.append("' ");
-					}
-				}
-				if (groupBy != null) {
-					builder.append(" group by ").append(this.groupBy)
-							.append("");
+							.append(en.getValue().getKey()).append("'")
+							.append(en.getValue().getValue()).append("' ");
 				}
 			}
 			this.currentSql = builder.toString();
@@ -477,29 +388,14 @@ public abstract class Sql<T extends Sql<T>> {
 			this.orderColumn = order;
 			return this;
 		}
+	}
 
-		@Override
-		public Select prepare() {
-			this.isPrepared = true;
-			return this;
-		}
+	@SuppressWarnings("serial")
+	public class SqlBuilderExeption extends RuntimeException {
 
-		public List<Map<String, String>> getTable() {
-			if (isPrepared) {
-				return Db.preparedSelect(this.get(), this.params());
-			} else {
-				return Db.selectTable(this.get());
-			}
-		}
-
-		public <T> List<T> getType(Class<T> type) {
-			if (isPrepared) {
-				return Db.preparedSelect(this.get(), this.params(), type);
-			} else {
-				return Db.select(this.get(), type);
-			}
+		public SqlBuilderExeption(String string) {
+			super(string);
 		}
 
 	}
-
 }

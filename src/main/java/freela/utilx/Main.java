@@ -1,4 +1,4 @@
-package freela.util;
+package freela.utilx;
 
 import java.awt.Container;
 import java.awt.EventQueue;
@@ -17,7 +17,11 @@ import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
 
 import sun.util.resources.LocaleData;
-import freela.util.Db.SelectCallbackTable;
+import freela.utilx.Db.SelectCallbackTable;
+import freela.utilx.Sql.Select;
+import freela.works.Category;
+import freela.works.Match;
+import freela.works.Product;
 
 public class Main extends JFrame {
 	// current:more testing, date formatting
@@ -49,7 +53,7 @@ public class Main extends JFrame {
 
 		contentPane.add(table);
 		LocalDate date = LocalDate.now();
-	
+
 	}
 
 	private void func(Function<Integer, String> object) {
@@ -57,9 +61,36 @@ public class Main extends JFrame {
 	}
 
 	public static void main(String[] args) {
-		setLookAndFell();
+		Db.DB_URL = "jdbc:mysql://localhost:3306/fazlastoklar";
+		Db.USER = "root";
+		Db.PASS = "2882";
 
-		EventQueue.invokeLater(() -> (enumsFromDb()));
+		// select (select count(*) from procount ) as pcount , (select count(*)
+		// from user) as ucount ;
+
+		String pcount = new Sql.Select("count(*)").from("product").get();
+		String ucount = new Sql.Select("count(*)").from("user").get();
+
+		String all = new Sql.Select("("+pcount + ") as pcount,(" + ucount
+				+ ") as ucount ").get();
+
+		Db.selectTable(all).get(0).forEach((k, v) -> {
+			System.out.println(k + ":" + v);
+		});
+
+		// dbstaff();
+		// setLookAndFell();
+
+		// EventQueue.invokeLater(() -> (enumsFromDb()));
+	}
+
+	private static void dbstaff() {
+		List<Match> list = Db.select(new Sql.Select().from("duplicateAll")
+				.get(), Match.class);
+		list.stream().forEach(p -> {
+			System.out.println(p.getId());
+		});
+		System.out.println(list);
 	}
 
 	private static void enumsFromDb() {
